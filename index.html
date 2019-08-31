@@ -1,0 +1,49 @@
+<script>
+
+const crypto = window.crypto;
+const subtle = crypto.subtle;
+
+function e(id) {
+  return document.getElementById(id);
+}
+
+async function encrypt() {
+  const key = await subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+  const iv = await crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    (new TextEncoder()).encode(e('plaintextA').value),
+  );
+  e('ciphertextA').value = JSON.stringify(Array.from(new Uint8Array(ciphertext)));
+  e('keyA').value = JSON.stringify({
+    'key': await subtle.exportKey('jwk', key),
+    'iv': Array.from(iv),
+  })
+}
+
+async function decrypt() {
+  const { key, iv }  = JSON.parse(e('keyB').value);
+  e('plaintextB').value = (new TextDecoder).decode(await subtle.decrypt(
+    { name: 'AES-GCM', iv: new Uint8Array(iv) },
+    await subtle.importKey('jwk', key, 'AES-GCM', true, ['encrypt', 'decrypt']),
+    new Uint8Array(JSON.parse(e('ciphertextB').value)),
+  ));
+}
+
+</script>
+
+<div style='text-align:right; width:60ch'>
+  enter your message here: <input type='text' id='plaintextA'><br>
+  then <input type='button' value='encrypt' onclick='encrypt()'><br>
+  copy and send your ciphertext: <input type='text' id='ciphertextA' readonly=true><br>
+  enter counterpart's ciphertext here: <input type='text' id='ciphertextB'><br>
+  send your key: <input type='text' id='keyA' readonly=true><br>
+  enter counterpart's key here: <input type='text' id='keyB'><br>
+  then <input type='button' value='decrypt' onclick='decrypt()'><br>
+  your counterpart's message: <input type='text' id='plaintextB' readonly=true><br>
+</div>
